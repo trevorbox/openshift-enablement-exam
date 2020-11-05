@@ -5,3 +5,4 @@
 /cluster2/
 /users.htpasswd
 /openshift-install
+install-config-tbox1.yaml
