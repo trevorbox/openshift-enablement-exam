@@ -12,12 +12,11 @@ function create_openshift()
   # create route 
   oc create route reencrypt apiserver --service kubernetes --port https -n default
   # add simple user
-  htpasswd -c -B -b $HOME/cluster$CLUSTER_ID/auth/htpasswd raffa raffa
-  htpasswd -B -b $HOME/cluster$CLUSTER_ID/auth/htpasswd tbox 'r3dh4t1!'
-  htpasswd -B -b $HOME/cluster$CLUSTER_ID/auth/htpasswd dev  'r3dh4t1!'
+  htpasswd -c -B -b $HOME/cluster$CLUSTER_ID/auth/htpasswd tbox 'r3dh4t1!'
+  htpasswd -B -b $HOME/cluster$CLUSTER_ID/auth/htpasswd dev1 'r3dh4t1!'
+  htpasswd -B -b $HOME/cluster$CLUSTER_ID/auth/htpasswd dev2 'r3dh4t1!'
   oc create secret generic htpass-secret --from-file=htpasswd=$HOME/cluster$CLUSTER_ID/auth/htpasswd -n openshift-config
   oc apply -f ../misc4.0/htpasswd/oauth.yaml -n openshift-config
-  oc adm policy add-cluster-role-to-user cluster-admin raffa
   oc adm policy add-cluster-role-to-user cluster-admin tbox
 }
 
