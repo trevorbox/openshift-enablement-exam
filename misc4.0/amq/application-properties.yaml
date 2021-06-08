@@ -12,21 +12,115 @@ data:
         web:
           exposure:
             include: ["health", "info", "env","bus-refresh", "refresh"]
-       
-      jms:
-        pub-sub-domain: true
 
-    amqphub:
-      amqp10jms:
-        username: admin
-        password:  admin 
-        #https://qpid.apache.org/releases/qpid-jms-0.54.0/docs/index.html#ssl-transport-configuration-options        
-        remote-url: amqps://amq-hdls-svc:5671?transport.trustStoreLocation=/certs/truststore.jks&transport.trustStorePassword=changeit
-        pool:
-          enabled: true
-          maxConnections: 2        
+    spring:
+      application:
+        name: spring-amq-test        
+
+
+      # Spring DB Settings
+      datasource:
+        type: org.apache.tomcat.jdbc.pool.DataSource
+        driver-class-name: org.postgresql.Driver
+        url: jdbc:postgresql://postgresql:5432/sampledb
+        username: postgresql
+        password: postgresql
+        tomcat:
+          # Number of ms to wait before throwing an exception if no connection is available.
+          max-wait: 6000
+          # Maximum number of active connections that can be allocated from this pool at the same time.
+          max-active: 150
+          # Minimum number of active connections that should be maintained in pool at idle
+          min-idle: 3
+          # Validate the connection before borrowing it from the pool.
+          test-on-borrow: true
+
+      # Spring JMS Settings
+      jms:
+        listener:
+          acknowledge-mode: auto
+          auto-startup: true
+          concurrency: 2
+          max-concurrency: 2
+        pub-sub-domain: false
+        template:
+          default-destination:
+          delivery-mode: non_persistent
+          priority: 100
+          qos-enabled: true
+          receive-timeout: 1000
+          time-to-live: 36000
+
+      # Spring Stream Settings
+      cloud:
+        stream:
+          bindings:
+            stream-request:
+              consumer:
+                concurrency: 2
+              destination: stream-request-exchange
+              group: test-stream-processors
+            stream-response:
+              destination: stream-response-exchange
 
     server:
       servlet:
-        context-path: /amq/api
+        context-path: /amq
         port: 8080
+
+    debug: false
+
+    # Logging configuration
+    logging:
+      pattern:
+        console: "%d || Thread=%t || SourcedFrom=%-5level || Class=%c{1} || %m%n"
+      level:
+        - ".=info"
+
+    ---
+    spring:
+      profiles: streamless
+      profiles.include: activemq
+      activemq:
+        broker-url: vm://embedded?broker.persistent=false,useShutdownHook=false
+        non-blocking-redelivery: true
+      cloud:
+        stream:
+          default-binder: test
+
+    ---
+    spring:
+      profiles: local
+      profiles.include: activemq, rabbit
+      activemq:
+        broker-url: vm://embedded?broker.persistent=false,useShutdownHook=false
+        non-blocking-redelivery: true
+      rabbitmq:
+        addresses: amqp://guest:guest@localhost:5672/
+      cloud:
+        stream:
+          rabbit:
+            bindings:
+              stream-request:
+                consumer:
+                  bindingRoutingKey: order.*.streamRequest
+              stream-response:
+                producer:
+                  routing-key-expression: headers['event-type']
+
+    ---
+    spring:
+      profiles: server
+      profiles.include: redhatmq
+      cloud:
+        stream:
+          default-binder: test
+    amqphub:
+      amqp10jms:
+        username: admin
+        password:  admin
+        #https://qpid.apache.org/releases/qpid-jms-0.54.0/docs/index.html#ssl-transport-configuration-options
+        remote-url: amqps://amq-hdls-svc:5671?transport.trustStoreLocation=/certs/truststore.jks&transport.trustStorePassword=changeit
+        pool:
+          enabled: true
+          maxConnections: 2

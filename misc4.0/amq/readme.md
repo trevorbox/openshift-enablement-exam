@@ -78,20 +78,24 @@ oc apply -f ./amq.yaml -n ${project}
 oc rollout restart statefulset amq-ss -n ${project}
 ```
 
+### Postgresql
+
+```shell
+oc process postgresql-ephemeral -n openshift POSTGRESQL_PASSWORD=postgresql POSTGRESQL_USER=postgresql | oc apply -f - -n ${project}
+```
+
 ## Run a client app
 
 The app can be found here: https://github.com/raffaelespazzoli/amq-test
 
 ```shell
 oc import-image ubi8/openjdk-11 --from=registry.access.redhat.com/ubi8/openjdk-11 --confirm -n ${project}
-oc new-app openjdk-11~https://github.com/raffaelespazzoli/amq-test --name springboot-amq -n ${project} -l app=amq-test
-oc apply -f application-properties.yaml -n ${project}
+oc new-app openjdk-11~https://github.com/raffaelespazzoli/amq-test --name springboot-amq -n ${project} -l app=springboot-amq
+oc apply -f ./application-properties.yaml -n ${project}
 oc set volume deployment/springboot-amq --add --configmap-name=application-properties --mount-path=/config --name=config -t configmap -n ${project}
 oc set volume deployment/springboot-amq --add --secret-name=amq-amqp-tls-secret --mount-path=/certs --name=certs -t secret -n ${project}
-oc set env deployment/springboot-amq SPRING_CONFIG_LOCATION=/config/application-properties.yaml -n ${project}
+oc set env deployment/springboot-amq SPRING_CONFIG_LOCATION=/config/application-properties.yaml SPRING_PROFILES_ACTIVE=server -n ${project}
 oc expose service springboot-amq --port 8080-tcp -n ${project}
-## not sure how to use this app, I tried the below, but didn't work:
-curl -X POST http://springboot-amq-${project}.apps.${base_domain}/api/post/myqueue -H 'Content-Type: application/json' -d ciao
 ```
 
 ## Install interconnect
@@ -136,7 +140,6 @@ oc apply -f ./interconnect.yaml -n ${project}
 # if you didn't install skater/reloader, run this every time the certificates are renewed
 oc rollout restart deployment router-mesh -n ${project}
 ```
-
 
 ### Run client app internally
 
